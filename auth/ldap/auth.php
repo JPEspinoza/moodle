@@ -901,7 +901,6 @@ class auth_plugin_ldap extends auth_plugin_base {
             $errors = 0;
 
             foreach ($add_users as $user) {
-                $transaction = $DB->start_delegated_transaction();
                 $user = $this->get_userinfo_asobj($user->username);
 
                 // Prep a few params
@@ -923,27 +922,32 @@ class auth_plugin_ldap extends auth_plugin_base {
                     $user->calendartype = $CFG->calendartype;
                 }
 
-                // $id = user_create_user($user, false);
                 try {
+                    $transaction = $DB->start_delegated_transaction();
                     $id = user_create_user($user, false);
+                    echo "\t"; print_string('auth_dbinsertuser', 'auth_db', array('name'=>$user->username, 'id'=>$id)); echo "\n";
+                    $euser = $DB->get_record('user', array('id' => $id));
+
+                    if (!empty($this->config->forcechangepassword)) {
+                        set_user_preference('auth_forcepasswordchange', 1, $id);
+                    }
+
+                    // Save custom profile fields.
+                    $this->update_user_record($user->username, $this->get_profile_keys(true), false);
+
+                    // Add roles if needed.
+                    $this->sync_roles($euser);
+                    $transaction->allow_commit();
                 } catch (Exception $e) {
                     print_string('invaliduserexception', 'auth_ldap', print_r($user, true) .  $e->getMessage());
                     $errors++;
-                    continue;
+
+                    // The rollback will rethrow the exception, breaking the loop.
+                    // Catch and ignore the exception
+                    try {
+                        $transaction->rollback($e);
+                    } catch(Exception $e) { }
                 }
-                echo "\t"; print_string('auth_dbinsertuser', 'auth_db', array('name'=>$user->username, 'id'=>$id)); echo "\n";
-                $euser = $DB->get_record('user', array('id' => $id));
-
-                if (!empty($this->config->forcechangepassword)) {
-                    set_user_preference('auth_forcepasswordchange', 1, $id);
-                }
-
-                // Save custom profile fields.
-                $this->update_user_record($user->username, $this->get_profile_keys(true), false);
-
-                // Add roles if needed.
-                $this->sync_roles($euser);
-                $transaction->allow_commit();
             }
 
             // Display number of user creation errors, if any.
