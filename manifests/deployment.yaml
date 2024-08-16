@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-moodle
+  labels:
+    app: deploy-moodle
+    kubernetes.azure.com/generator: devhub
+  namespace: namespace-workflow-1723845252965
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deploy-moodle
+  template:
+    metadata:
+      labels:
+        app: deploy-moodle
+    spec:
+      containers:
+        - name: deploy-moodle
+          image: uaimoodle.azurecr.io/image-workflow-1723845252965:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80

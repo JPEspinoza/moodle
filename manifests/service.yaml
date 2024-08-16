@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: deploy-moodle
+  namespace: namespace-workflow-1723845252965
+  labels:
+    kubernetes.azure.com/generator: devhub
+spec:
+  type: LoadBalancer
+  selector:
+    app: deploy-moodle
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
